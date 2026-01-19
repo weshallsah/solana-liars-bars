@@ -1,28 +1,68 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { LiarsBarDapp } from "../target/types/liars_bar_dapp";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
+import {
+  ComputeBudgetProgram,
+  PublicKey,
+  SystemProgram,
+} from "@solana/web3.js";
 
 describe("liars-bars", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
+  const tableId = new anchor.BN(20);
 
   const program = anchor.workspace.LiarsBarDapp as Program<LiarsBarDapp>;
 
   // You need to know the IncoLightning program ID
   const INCO_LIGHTNING_PROGRAM_ID = new PublicKey(
-    "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj"
+    "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj",
   );
 
+  before("initializing-event-listner", async () => {
+    program.addEventListener("liarsTableCreated", (event, slot, signature) => {
+      console.log("liarsTableCreated event:", event.tableId.toNumber());
+      // console.log("tx:", signature);
+      // console.log("slots :", slot);
+    });
+
+    program.addEventListener("playerJoined", (event, slot, signature) => {
+      console.log("playerJoined", event);
+      console.log(event.player.toString());
+      console.log(event.tableId.toNumber());
+    });
+
+    program.addEventListener("cardPlaced", (event, slot, signature) => {
+      console.log("cardPlaced", event);
+      console.log(event.player.toString());
+      console.log(event.tableId.toNumber());
+    });
+
+    program.addEventListener("roundStarted", (event, slot, signature) => {
+      console.log("roundStarted", event);
+      // console.log(event..toString());
+      console.log(event.tableId.toNumber());
+    });
+
+    program.addEventListener(
+      "suffleCardsForPlayer",
+      (event, slot, signature) => {
+        console.log("suffleCardsForPlayer", event);
+        console.log(event.player.toString());
+        console.log(event.tableId.toNumber());
+        console.log(event.next.toString());
+      },
+    );
+  });
+
   it("create-table", async () => {
-    const roomId = new anchor.BN(3);
     const [tableAddress] = PublicKey.findProgramAddressSync(
-      [Buffer.from("table"), roomId.toArrayLike(Buffer, "le", 8)],
-      program.programId
+      [Buffer.from("table"), tableId.toArrayLike(Buffer, "le", 8)],
+      program.programId,
     );
 
     const tx = await program.methods
-      .createTable(roomId)
+      .createTable(tableId)
       .accounts({
         signer: provider.wallet.publicKey,
         table: tableAddress,
@@ -32,28 +72,29 @@ describe("liars-bars", () => {
       .rpc();
 
     console.log("Tx:", tx);
-
-    const table = await program.account.gameTable.fetch(tableAddress);
-
-    console.log(table);
   });
 
-  it("create-player", async () => {
-    const tableId = new anchor.BN(3);
+  it("join-table", async () => {
     const [tableAddress] = PublicKey.findProgramAddressSync(
+      [Buffer.from("table"), tableId.toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+
+    const [playerAddress] = PublicKey.findProgramAddressSync(
       [
         Buffer.from("player"),
         tableId.toArrayLike(Buffer, "le", 8),
         provider.wallet.publicKey.toBuffer(),
       ],
-      program.programId
+      program.programId,
     );
 
     const tx = await program.methods
-      .createPlayer(tableId)
+      .joinTable(tableId)
       .accounts({
         signer: provider.wallet.publicKey,
         table: tableAddress,
+        player: playerAddress,
         systemProgram: SystemProgram.programId,
         incoLightningProgram: INCO_LIGHTNING_PROGRAM_ID,
       } as any)
@@ -61,8 +102,97 @@ describe("liars-bars", () => {
 
     console.log("Tx:", tx);
 
-    const player = await program.account.player.fetch(tableAddress);
+    // const table = await program.account.gameTable.fetch(tableAddress);
 
-    console.log(player);
+    // console.log(table);
+
+    // const player = await program.account.player.fetch(playerAddress);
+
+    // console.log(player);
+  });
+
+  it("start round", async () => {
+    const [tableAddress] = PublicKey.findProgramAddressSync(
+      [Buffer.from("table"), tableId.toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+    const tx = await program.methods
+      .startRound(tableId)
+      .accounts({
+        signer: provider.wallet.publicKey,
+        table: tableAddress,
+        // player: playerAddress,
+        systemProgram: SystemProgram.programId,
+        incoLightningProgram: INCO_LIGHTNING_PROGRAM_ID,
+      } as any)
+      .rpc();
+
+    console.log("Tx:", tx);
+  });
+
+  it("suffle cards", async () => {
+    const [tableAddress] = PublicKey.findProgramAddressSync(
+      [Buffer.from("table"), tableId.toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+
+    const [playerAddress] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("player"),
+        tableId.toArrayLike(Buffer, "le", 8),
+        provider.wallet.publicKey.toBuffer(),
+      ],
+      program.programId,
+    );
+
+    const tx = await program.methods
+      .suffleCards(tableId)
+      .accounts({
+        signer: provider.wallet.publicKey,
+        table: tableAddress,
+        player: playerAddress,
+        systemProgram: SystemProgram.programId,
+        incoLightningProgram: INCO_LIGHTNING_PROGRAM_ID,
+      } as any)
+      .rpc();
+
+    console.log("Tx:", tx);
+  });
+
+  it("place cards", async () => {
+    const [tableAddress] = PublicKey.findProgramAddressSync(
+      [Buffer.from("table"), tableId.toArrayLike(Buffer, "le", 8)],
+      program.programId,
+    );
+
+    const [playerAddress] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("player"),
+        tableId.toArrayLike(Buffer, "le", 8),
+        provider.wallet.publicKey.toBuffer(),
+      ],
+      program.programId,
+    );
+
+    const tx = await program.methods
+      .placeCards(tableId, Buffer.from([4, 2]))
+      .accounts({
+        signer: provider.wallet.publicKey,
+        table: tableAddress,
+        player: playerAddress,
+        systemProgram: SystemProgram.programId,
+        incoLightningProgram: INCO_LIGHTNING_PROGRAM_ID,
+      } as any)
+      .rpc();
+
+    console.log("Tx:", tx);
+
+    // const table = await program.account.gameTable.fetch(tableAddress);
+
+    // console.log(table);
+
+    // const player = await program.account.player.fetch(playerAddress);
+
+    // console.log(player);
   });
 });

@@ -7,7 +7,7 @@ skip-lint = false
 
 [programs.devnet]
 inco_lightning = "5sjEbPiqgZrYwR31ahR6Uk9wf5awoX61YGg7jExQSwaj"
-liars_bars = "Cgehp7M8KnHzXC7NNa3C43ECq9DL6GkpERoAFPACSwyF"
+liars_bars = "6wYATvBh3f8gPZGTTeRJ8Qs38S1XcjJCybHyfBCDRFhg"
 
 [programs.localnet]
 liars_bars = "8SEnxoxd14bJyAb9HQ2mUR3hi4gk8oqty43VVFZCVjTx"

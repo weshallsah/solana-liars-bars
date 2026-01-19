@@ -1,36 +1,38 @@
 use anchor_lang::prelude::*;
 use inco_lightning::types::{Ebool, Euint128};
+const EUINT128_SIZE: usize = 32;
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Card {
-    pub shape: u128,
-    pub value: u128,
+    pub shape: Euint128,
+    pub value: Euint128,
+}
+
+impl anchor_lang::Space for Card {
+    const INIT_SPACE: usize = EUINT128_SIZE + EUINT128_SIZE as usize;
 }
 
 #[account]
 #[derive(InitSpace)]
-pub struct GameTable {
-    pub table_id: u64,
+pub struct LiarsTable {
+    pub table_id: u64,  // uniq number to discribe the account
+    pub table_card: u8, // a shape for which players can lia
     #[max_len(5)]
-    pub latest: Vec<Card>,
-    #[max_len(6)]
-    pub bullet: Vec<u128>,
-    pub bullet_index: u64,
-    pub is_open: bool,
+    pub cards_on_table: Vec<Card>, // the cards which player can draw and put on the table which can be maximum 5 cards
     #[max_len(5)]
-    pub players: Vec<Pubkey>,
+    pub remaining_bullet: Vec<u8>, // the revolver data of every players
+    pub is_open: bool, // this discribe the table is open for join
+    #[max_len(5)]
+    pub players: Vec<Pubkey>, // the pubkey of the players
     #[max_len(4, 13)]
-    pub deck: Vec<Vec<u128>>,
+    pub deck: Vec<Vec<bool>>, // the 52 cards deck out of we can draw the cards
+    pub trun_to_play: u8, // this tell us which player is now to play
 }
 
 #[account]
 #[derive(InitSpace)]
 pub struct Player {
-    pub table_id: u64,
-    pub is_eliminated: bool,
-    #[max_len(5,2)]
-    pub cards: Vec<Vec<u128>>,
+    pub table_id: u64, // this player account of which table
     #[max_len(5)]
-    pub placed_cards: Vec<bool>,
+    pub cards: Vec<Card>, // the player get 5 cards for which he has to lie and not get catch
 }
-
